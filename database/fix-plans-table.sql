@@ -51,3 +51,4 @@ WHERE table_schema = 'public'
 AND table_name = 'plans'
 ORDER BY ordinal_position;
 
+

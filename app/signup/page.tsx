@@ -24,10 +24,21 @@ export default function SignupPage() {
     setLoading(true);
     setMessage('');
 
+    // Get the redirect URL - use environment variable or current origin
+    let redirectUrl: string;
+    if (typeof window !== 'undefined') {
+      // Client-side: use current origin (works in both local and production)
+      redirectUrl = window.location.origin;
+    } else {
+      // Server-side fallback
+      redirectUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: true,
+        emailRedirectTo: `${redirectUrl}/signup`,
       },
     });
 

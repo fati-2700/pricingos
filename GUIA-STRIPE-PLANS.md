@@ -165,3 +165,4 @@ El archivo `app/api/checkout/route.ts` ya está configurado para:
 
 ¡Listo! Tu aplicación ahora usará los Price IDs reales de Stripe desde la base de datos.
 
+
