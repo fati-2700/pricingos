@@ -3,24 +3,32 @@
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogOut, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export default function TopBar() {
   const router = useRouter();
   const [email, setEmail] = useState<string>('');
-  const supabase = createClient();
+  // Memoize supabase client to prevent recreating on every render
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
+    let mounted = true;
+    
     const getUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
+      if (mounted && user) {
         setEmail(user.email || '');
       }
     };
+    
     getUser();
-  }, [supabase]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array - only run once
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

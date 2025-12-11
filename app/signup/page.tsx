@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -16,7 +16,8 @@ export default function SignupPage() {
     main_service: '',
     years_experience: '',
   });
-  const supabase = createClient();
+  // Memoize supabase client to prevent recreating on every render
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
 
   const handleEmailSubmit = async (e: React.FormEvent) => {

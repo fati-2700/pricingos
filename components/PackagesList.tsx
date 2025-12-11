@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Copy, Edit2, Save, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { GeneratedPackage } from '@/types/database';
@@ -13,7 +13,8 @@ export default function PackagesList({ packages: initialPackages }: PackagesList
   const [packages, setPackages] = useState(initialPackages);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ price: number; short_description: string; includes_text: string } | null>(null);
-  const supabase = createClient();
+  // Memoize supabase client to prevent recreating on every render
+  const supabase = useMemo(() => createClient(), []);
 
   const handleEdit = (pkg: typeof packages[0]) => {
     setEditingId(pkg.id);
