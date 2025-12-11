@@ -335,3 +335,6 @@ For issues or questions, please open an issue on GitHub or contact support.
 Built with ❤️ for freelancers and small agencies
 
 
+favicon.ico:1  Failed to load resource: the server responded with a status of 404 ()
+users?select=name&id=eq.ee87626b-18ae-4ddb-9107-6864ff0aff4c:1  Failed to load resource: the server responded with a status of 406 ()
+Node cannot be found in the current page.

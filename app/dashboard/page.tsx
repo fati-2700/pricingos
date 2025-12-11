@@ -15,14 +15,20 @@ export default async function DashboardPage() {
   }
 
   // Check if user has completed onboarding
+  // Use maybeSingle() to handle case where user doesn't exist yet
   const { data: userData, error: userDataError } = await supabase
     .from('users')
     .select('name')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   // If user data doesn't exist or name is missing, redirect to signup
-  if (userDataError || !userData || !(userData as any).name) {
+  // PGRST116 is "not found" error which is expected for new users
+  if (userDataError && userDataError.code !== 'PGRST116') {
+    console.error('Error fetching user data:', userDataError);
+  }
+  
+  if (!userData || !(userData as any).name) {
     redirect('/signup');
   }
 

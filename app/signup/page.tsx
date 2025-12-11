@@ -102,15 +102,21 @@ export default function SignupPage() {
       
       if (user) {
         // Check if user has completed onboarding
+        // Use maybeSingle() instead of single() to handle case where user doesn't exist yet
         const { data: userData, error } = await supabase
           .from('users')
           .select('name')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!mounted) return;
 
-        if (userData && (userData as any).name && !error) {
+        // If error is a 406 or other client error, log it but don't block
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking user data:', error);
+        }
+
+        if (userData && (userData as any).name) {
           // User has completed onboarding, redirect to dashboard
           router.replace('/dashboard');
         } else {
