@@ -2,6 +2,9 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 
+// Use Node.js runtime for checkout (required for Stripe)
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     const supabase = createServerSupabaseClient();

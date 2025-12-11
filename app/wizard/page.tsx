@@ -89,7 +89,7 @@ export default function WizardPage() {
       }
 
       // Save profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await (supabase as any)
         .from('profiles')
         .upsert({
           user_id: user.id,
@@ -107,7 +107,7 @@ export default function WizardPage() {
       for (const pt of projectTypes) {
         if (!pt.name.trim()) continue;
 
-        const { data: projectType, error: ptError } = await supabase
+        const { data: projectType, error: ptError } = await (supabase as any)
           .from('project_types')
           .insert({
             user_id: user.id,
@@ -131,11 +131,11 @@ export default function WizardPage() {
 
         // Save packages
         for (const pkg of packages) {
-          const { error: pkgError } = await supabase
+          const { error: pkgError } = await (supabase as any)
             .from('generated_packages')
             .insert({
               user_id: user.id,
-              project_type_id: projectType.id,
+              project_type_id: (projectType as any).id,
               package_name: pkg.package_name,
               price: pkg.price,
               short_description: pkg.short_description,

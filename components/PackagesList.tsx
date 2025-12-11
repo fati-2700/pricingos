@@ -27,7 +27,7 @@ export default function PackagesList({ packages: initialPackages }: PackagesList
   const handleSave = async (id: string) => {
     if (!editData) return;
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('generated_packages')
       .update({
         price: editData.price,

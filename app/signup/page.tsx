@@ -55,7 +55,7 @@ export default function SignupPage() {
     }
 
     // Save user profile data
-    const { error: userError } = await supabase
+    const { error: userError } = await (supabase as any)
       .from('users')
       .upsert({
         id: user.id,
@@ -89,7 +89,7 @@ export default function SignupPage() {
           .eq('id', user.id)
           .single();
 
-        if (userData?.name) {
+        if (userData && (userData as any).name) {
           router.push('/dashboard');
         } else {
           setStep('onboarding');

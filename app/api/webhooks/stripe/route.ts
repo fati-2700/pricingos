@@ -3,6 +3,9 @@ import { stripe } from '@/lib/stripe';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
+// Use Node.js runtime for webhook (required for Stripe webhook verification)
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
@@ -43,24 +46,27 @@ export async function POST(request: Request) {
     const planType = session.metadata?.type;
     const planName = session.metadata?.plan_name;
 
+    if (!planName) {
+      console.error('No plan_name in session metadata');
+      return NextResponse.json({ error: 'No plan_name' }, { status: 400 });
+    }
+
     // Find or create plan in database
     // TODO: In production, properly match plan from plans table
     let planId: string;
-    const { data: existingPlan } = await supabase
+    const { data: existingPlan, error: existingPlanError } = await supabase
       .from('plans')
       .select('id')
       .eq('name', planName)
       .single();
 
-    if (existingPlan) {
-      planId = existingPlan.id;
-    } else {
+    if (existingPlanError || !existingPlan) {
       // Create a placeholder plan if it doesn't exist
       // TODO: Pre-populate plans table with actual Stripe product/price IDs
-      const { data: newPlan, error: planError } = await supabase
+      const { data: newPlan, error: planError } = await (supabase as any)
         .from('plans')
         .insert({
-          name: planName || 'Unknown Plan',
+          name: planName,
           monthly_price_usd: 0,
           setup_fee_usd: 0,
           lifetime_price_usd: 0,
@@ -68,11 +74,13 @@ export async function POST(request: Request) {
         .select()
         .single();
 
-      if (planError) {
+      if (planError || !newPlan) {
         console.error('Error creating plan:', planError);
         return NextResponse.json({ error: 'Error creating plan' }, { status: 500 });
       }
-      planId = newPlan.id;
+      planId = (newPlan as { id: string }).id;
+    } else {
+      planId = (existingPlan as { id: string }).id;
     }
 
     // Determine if this is a lifetime purchase
@@ -94,7 +102,7 @@ export async function POST(request: Request) {
     }
 
     // Create or update subscription record
-    const { error: subError } = await supabase.from('subscriptions').upsert({
+    const { error: subError } = await (supabase as any).from('subscriptions').upsert({
       user_id: userId,
       plan_id: planId,
       status,
@@ -112,7 +120,7 @@ export async function POST(request: Request) {
     const subscription = event.data.object as Stripe.Subscription;
 
     // Update subscription status and renewal date
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('subscriptions')
       .update({
         status: subscription.status as any,
@@ -127,7 +135,7 @@ export async function POST(request: Request) {
     const subscription = event.data.object as Stripe.Subscription;
 
     // Mark subscription as canceled
-    const { error: cancelError } = await supabase
+    const { error: cancelError } = await (supabase as any)
       .from('subscriptions')
       .update({
         status: 'canceled',

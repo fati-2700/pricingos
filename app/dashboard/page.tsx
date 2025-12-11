@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  if (!userData?.name) {
+  if (!userData || !(userData as any).name) {
     redirect('/signup');
   }
 
