@@ -15,13 +15,14 @@ export default async function DashboardPage() {
   }
 
   // Check if user has completed onboarding
-  const { data: userData } = await supabase
+  const { data: userData, error: userDataError } = await supabase
     .from('users')
     .select('name')
     .eq('id', user.id)
     .single();
 
-  if (!userData || !(userData as any).name) {
+  // If user data doesn't exist or name is missing, redirect to signup
+  if (userDataError || !userData || !(userData as any).name) {
     redirect('/signup');
   }
 

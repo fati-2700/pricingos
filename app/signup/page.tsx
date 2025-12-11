@@ -83,26 +83,38 @@ export default function SignupPage() {
       return;
     }
 
-    router.push('/dashboard');
+    // Use replace instead of push to avoid back button issues
+    // Refresh router to ensure latest data is loaded
+    router.refresh();
+    router.replace('/dashboard');
   };
 
-  // Check if user is already logged in
+  // Check if user is already logged in (only once on mount)
   useEffect(() => {
+    let mounted = true;
+    
     const checkUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      
+      if (!mounted) return;
+      
       if (user) {
         // Check if user has completed onboarding
-        const { data: userData } = await supabase
+        const { data: userData, error } = await supabase
           .from('users')
           .select('name')
           .eq('id', user.id)
           .single();
 
-        if (userData && (userData as any).name) {
-          router.push('/dashboard');
+        if (!mounted) return;
+
+        if (userData && (userData as any).name && !error) {
+          // User has completed onboarding, redirect to dashboard
+          router.replace('/dashboard');
         } else {
+          // User hasn't completed onboarding, show onboarding form
           setStep('onboarding');
           if (user.email) {
             setEmail(user.email);
@@ -110,8 +122,13 @@ export default function SignupPage() {
         }
       }
     };
+    
     checkUser();
-  }, [supabase, router]);
+    
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   if (step === 'email') {
     return (
