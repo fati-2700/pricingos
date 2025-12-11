@@ -32,12 +32,12 @@ export default async function DashboardPage() {
     redirect('/signup');
   }
 
-  // Check if profile exists
+  // Check if profile exists (use maybeSingle to avoid errors if it doesn't exist)
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   // Get packages with project types
   const { data: packages } = await supabase

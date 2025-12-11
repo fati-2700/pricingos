@@ -54,6 +54,7 @@ export default function SignupPage() {
   const handleOnboardingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage('');
 
     const {
       data: { user },
@@ -83,17 +84,35 @@ export default function SignupPage() {
       return;
     }
 
-    // Use replace instead of push to avoid back button issues
-    // Refresh router to ensure latest data is loaded
-    router.refresh();
-    router.replace('/dashboard');
+    // Wait a moment for the database to update, then verify
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Verify the data was saved before redirecting
+    const { data: verifyData } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (verifyData && (verifyData as any).name) {
+      // Data is saved, use window.location for a hard redirect to avoid loops
+      window.location.href = '/dashboard';
+    } else {
+      setMessage('Error saving data. Please try again.');
+      setLoading(false);
+    }
   };
 
   // Check if user is already logged in (only once on mount)
   useEffect(() => {
     let mounted = true;
+    let hasChecked = false;
     
     const checkUser = async () => {
+      // Prevent multiple checks
+      if (hasChecked) return;
+      hasChecked = true;
+      
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -117,8 +136,9 @@ export default function SignupPage() {
         }
 
         if (userData && (userData as any).name) {
-          // User has completed onboarding, redirect to dashboard
-          router.replace('/dashboard');
+          // User has completed onboarding, redirect to dashboard using window.location
+          // to avoid router loops
+          window.location.href = '/dashboard';
         } else {
           // User hasn't completed onboarding, show onboarding form
           setStep('onboarding');
@@ -129,10 +149,14 @@ export default function SignupPage() {
       }
     };
     
-    checkUser();
+    // Small delay to prevent race conditions
+    const timeoutId = setTimeout(() => {
+      checkUser();
+    }, 100);
     
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
     };
   }, []); // Empty dependency array - only run once on mount
 
