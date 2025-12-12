@@ -39,7 +39,7 @@ export default function SignupPage() {
       email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${redirectUrl}/signup`,
+        emailRedirectTo: `${redirectUrl}/auth/callback?next=/signup`,
       },
     });
 
@@ -108,56 +108,77 @@ export default function SignupPage() {
   useEffect(() => {
     let mounted = true;
     let hasChecked = false;
+    let isChecking = false;
     
     const checkUser = async () => {
       // Prevent multiple checks
-      if (hasChecked) return;
-      hasChecked = true;
+      if (hasChecked || isChecking) return;
+      isChecking = true;
       
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      
-      if (!mounted) return;
-      
-      if (user) {
-        // Check if user has completed onboarding
-        // Use maybeSingle() instead of single() to handle case where user doesn't exist yet
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', user.id)
-          .maybeSingle();
-
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        
         if (!mounted) return;
+        
+        if (user) {
+          // Check if user has completed onboarding
+          // Use maybeSingle() instead of single() to handle case where user doesn't exist yet
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', user.id)
+            .maybeSingle();
 
-        // If error is a 406 or other client error, log it but don't block
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error checking user data:', error);
-        }
+          if (!mounted) return;
 
-        if (userData && (userData as any).name) {
-          // User has completed onboarding, redirect to dashboard using window.location
-          // to avoid router loops
-          window.location.href = '/dashboard';
-        } else {
-          // User hasn't completed onboarding, show onboarding form
-          setStep('onboarding');
-          if (user.email) {
-            setEmail(user.email);
+          // If error is a 406 or other client error, log it but don't block
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error checking user data:', error);
+          }
+
+          if (userData && (userData as any).name) {
+            // User has completed onboarding, redirect to dashboard using window.location
+            // to avoid router loops - but only if we're not already on dashboard
+            if (window.location.pathname !== '/dashboard') {
+              window.location.href = '/dashboard';
+            }
+          } else {
+            // User hasn't completed onboarding, show onboarding form
+            // Only update state if we're still on the signup page
+            if (window.location.pathname === '/signup') {
+              setStep('onboarding');
+              if (user.email) {
+                setEmail(user.email);
+              }
+            }
           }
         }
+      } catch (error) {
+        console.error('Error in checkUser:', error);
+      } finally {
+        hasChecked = true;
+        isChecking = false;
       }
     };
     
-    // Small delay to prevent race conditions
-    const timeoutId = setTimeout(() => {
-      checkUser();
-    }, 100);
+    // Only check if we're on the signup page and there's no code in URL (callback handles that)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('code')) {
+      // Small delay to prevent race conditions
+      const timeoutId = setTimeout(() => {
+        checkUser();
+      }, 300);
+      
+      return () => {
+        mounted = false;
+        clearTimeout(timeoutId);
+      };
+    }
     
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
     };
   }, []); // Empty dependency array - only run once on mount
 

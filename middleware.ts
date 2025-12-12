@@ -2,6 +2,18 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  // Skip middleware for static files and API routes
+  const pathname = request.nextUrl.pathname;
+  
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|webp)$/)
+  ) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -29,8 +41,12 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
-  await supabase.auth.getUser();
+  // Only refresh session, don't do anything else that could cause loops
+  try {
+    await supabase.auth.getUser();
+  } catch (error) {
+    // Silently handle errors to prevent middleware from breaking
+  }
 
   return supabaseResponse;
 }
