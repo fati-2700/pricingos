@@ -116,6 +116,16 @@ export default function SignupPage() {
       isChecking = true;
       
       try {
+        // Check URL params first - if coming from callback with authenticated=true, show onboarding immediately
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAuthenticated = urlParams.get('authenticated') === 'true';
+        
+        // If there's an error parameter, show it
+        const errorParam = urlParams.get('error');
+        if (errorParam) {
+          setMessage(`Authentication error: ${errorParam}`);
+        }
+        
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -123,8 +133,20 @@ export default function SignupPage() {
         if (!mounted) return;
         
         if (user) {
+          // If coming from callback and authenticated, show onboarding immediately
+          if (isAuthenticated) {
+            setStep('onboarding');
+            if (user.email) {
+              setEmail(user.email);
+            }
+            // Clean up URL
+            window.history.replaceState({}, '', '/signup');
+            hasChecked = true;
+            isChecking = false;
+            return;
+          }
+          
           // Check if user has completed onboarding
-          // Use maybeSingle() instead of single() to handle case where user doesn't exist yet
           const { data: userData, error } = await supabase
             .from('users')
             .select('name')
@@ -139,14 +161,13 @@ export default function SignupPage() {
           }
 
           if (userData && (userData as any).name) {
-            // User has completed onboarding, redirect to dashboard using window.location
-            // to avoid router loops - but only if we're not already on dashboard
+            // User has completed onboarding, redirect to dashboard
+            // Use window.location to force a full page reload and avoid loops
             if (window.location.pathname !== '/dashboard') {
               window.location.href = '/dashboard';
             }
           } else {
             // User hasn't completed onboarding, show onboarding form
-            // Only update state if we're still on the signup page
             if (window.location.pathname === '/signup') {
               setStep('onboarding');
               if (user.email) {
@@ -169,7 +190,7 @@ export default function SignupPage() {
       // Small delay to prevent race conditions
       const timeoutId = setTimeout(() => {
         checkUser();
-      }, 300);
+      }, 100);
       
       return () => {
         mounted = false;
