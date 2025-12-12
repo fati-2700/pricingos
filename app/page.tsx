@@ -1,7 +1,65 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useMemo } from 'react';
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    // Check if there's an auth code in the URL (from email confirmation)
+    // Supabase sends code and type=email in the URL
+    const code = searchParams.get('code');
+    const type = searchParams.get('type');
+    
+    if (code) {
+      // Redirect to auth callback to handle the code
+      // Preserve all query parameters
+      const params = new URLSearchParams();
+      params.set('code', code);
+      if (type) params.set('type', type);
+      params.set('next', '/signup');
+      
+      router.replace(`/auth/callback?${params.toString()}`);
+      return;
+    }
+
+    // Only check auth if there's no code (to avoid interfering with callback)
+    const checkAuth = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        // Check if user has completed onboarding
+        const { data: userData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (userData && (userData as any).name) {
+          // User has completed onboarding, redirect to dashboard
+          router.replace('/dashboard');
+        } else {
+          // User hasn't completed onboarding, redirect to signup
+          router.replace('/signup?authenticated=true');
+        }
+      }
+    };
+
+    // Only check auth if no code is present
+    if (!code) {
+      checkAuth();
+    }
+  }, [searchParams, router, supabase]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Navigation */}
