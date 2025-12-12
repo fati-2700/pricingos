@@ -54,10 +54,11 @@ export default function Home() {
       }
     };
 
+    // TEMPORARY: Disable auto-redirect for testing
     // Only check auth if no code is present
-    if (!code) {
-      checkAuth();
-    }
+    // if (!code) {
+    //   checkAuth();
+    // }
   }, [searchParams, router, supabase]);
 
   return (

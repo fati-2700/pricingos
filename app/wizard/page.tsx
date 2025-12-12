@@ -39,17 +39,18 @@ export default function WizardPage() {
     positioning: 'mid-market' as 'budget' | 'mid-market' | 'premium',
   });
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/signup');
-      }
-    };
-    checkAuth();
-  }, [supabase, router]);
+  // TEMPORARY: Disable auth check for testing
+  // useEffect(() => {
+  //   const checkAuth = async () => {
+  //     const {
+  //       data: { user },
+  //     } = await supabase.auth.getUser();
+  //     if (!user) {
+  //       router.push('/signup');
+  //     }
+  //   };
+  //   checkAuth();
+  // }, [supabase, router]);
 
   const addProjectType = () => {
     if (projectTypes.length < 3) {
@@ -79,72 +80,75 @@ export default function WizardPage() {
     setError('');
 
     try {
+      // TEMPORARY: Allow testing without authentication
+      // Create a temporary user ID for testing
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        setError('Please sign in first');
-        setLoading(false);
-        return;
-      }
-
-      // Save profile
-      const { data: profile, error: profileError } = await (supabase as any)
-        .from('profiles')
-        .upsert({
-          user_id: user.id,
-          base_hourly_rate: parseFloat(profileData.base_hourly_rate),
-          target_annual_income: parseFloat(profileData.target_annual_income),
-          typical_weekly_hours: parseFloat(profileData.typical_weekly_hours),
-          currency: profileData.currency,
-        })
-        .select()
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Save project types and generate packages
-      for (const pt of projectTypes) {
-        if (!pt.name.trim()) continue;
-
-        const { data: projectType, error: ptError } = await (supabase as any)
-          .from('project_types')
-          .insert({
+      // TEMPORARY: Allow testing without authentication
+      // Only save to database if user is logged in
+      if (user) {
+        // Save profile
+        const { data: profile, error: profileError } = await (supabase as any)
+          .from('profiles')
+          .upsert({
             user_id: user.id,
-            name: pt.name,
-            description: pt.description || null,
-            complexity: pt.complexity,
-            typical_duration_days: pt.typical_duration_days,
+            base_hourly_rate: parseFloat(profileData.base_hourly_rate),
+            target_annual_income: parseFloat(profileData.target_annual_income),
+            typical_weekly_hours: parseFloat(profileData.typical_weekly_hours),
+            currency: profileData.currency,
           })
           .select()
           .single();
 
-        if (ptError) throw ptError;
+        if (profileError) throw profileError;
 
-        // Generate packages
-        const packages = generatePackages({
-          profile: profile as Profile,
-          projectType: projectType as ProjectType,
-          clientType: clientData.clientType,
-          positioning: clientData.positioning,
-        });
+        // Save project types and generate packages
+        for (const pt of projectTypes) {
+          if (!pt.name.trim()) continue;
 
-        // Save packages
-        for (const pkg of packages) {
-          const { error: pkgError } = await (supabase as any)
-            .from('generated_packages')
+          const { data: projectType, error: ptError } = await (supabase as any)
+            .from('project_types')
             .insert({
               user_id: user.id,
-              project_type_id: (projectType as any).id,
-              package_name: pkg.package_name,
-              price: pkg.price,
-              short_description: pkg.short_description,
-              includes_text: pkg.includes_text,
-            });
+              name: pt.name,
+              description: pt.description || null,
+              complexity: pt.complexity,
+              typical_duration_days: pt.typical_duration_days,
+            })
+            .select()
+            .single();
 
-          if (pkgError) throw pkgError;
+          if (ptError) throw ptError;
+
+          // Generate packages
+          const packages = generatePackages({
+            profile: profile as Profile,
+            projectType: projectType as ProjectType,
+            clientType: clientData.clientType,
+            positioning: clientData.positioning,
+          });
+
+          // Save packages
+          for (const pkg of packages) {
+            const { error: pkgError } = await (supabase as any)
+              .from('generated_packages')
+              .insert({
+                user_id: user.id,
+                project_type_id: (projectType as any).id,
+                package_name: pkg.package_name,
+                price: pkg.price,
+                short_description: pkg.short_description,
+                includes_text: pkg.includes_text,
+              });
+
+            if (pkgError) throw pkgError;
+          }
         }
+      } else {
+        // For testing without auth - just show success message
+        alert('Wizard completed! (Test mode - data not saved to database)\n\nIn production, you need to be logged in to save data.');
       }
 
       router.push('/dashboard');

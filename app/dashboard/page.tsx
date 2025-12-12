@@ -5,51 +5,64 @@ import PackagesList from '@/components/PackagesList';
 import Link from 'next/link';
 
 export default async function DashboardPage() {
+  // TEMPORARY: Disable auth check for testing
+  // TODO: Re-enable authentication in production
   const supabase = createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect('/signup');
-  }
+  // Skip auth checks for now - allow access without authentication
+  // if (!user) {
+  //   redirect('/signup');
+  // }
 
-  // Check if user has completed onboarding
-  // Use maybeSingle() to handle case where user doesn't exist yet
-  const { data: userData, error: userDataError } = await supabase
-    .from('users')
-    .select('name')
-    .eq('id', user.id)
-    .maybeSingle();
+  // Check if user has completed onboarding (only if user exists)
+  let userData = null;
+  if (user) {
+    const { data, error: userDataError } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', user.id)
+      .maybeSingle();
 
-  // If user data doesn't exist or name is missing, redirect to signup
-  // PGRST116 is "not found" error which is expected for new users
-  if (userDataError && userDataError.code !== 'PGRST116') {
-    console.error('Error fetching user data:', userDataError);
+    if (userDataError && userDataError.code !== 'PGRST116') {
+      console.error('Error fetching user data:', userDataError);
+    }
+    
+    userData = data;
   }
   
-  if (!userData || !(userData as any).name) {
-    redirect('/signup');
-  }
+  // Skip onboarding check for now
+  // if (!userData || !(userData as any).name) {
+  //   redirect('/signup');
+  // }
 
   // Check if profile exists (use maybeSingle to avoid errors if it doesn't exist)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  let profile: any = null;
+  let packages: any[] = [];
+  
+  if (user) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    profile = profileData;
 
-  // Get packages with project types
-  const { data: packages } = await supabase
-    .from('generated_packages')
-    .select(`
-      *,
-      project_types (
-        name
-      )
-    `)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+    // Get packages with project types
+    const { data: packagesData } = await supabase
+      .from('generated_packages')
+      .select(`
+        *,
+        project_types (
+          name
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    packages = packagesData || [];
+  }
 
   return (
     <DashboardLayout>
